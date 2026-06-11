@@ -45,11 +45,8 @@ No account required. No API key needed. Works fully offline. Fully open source.
 
 ---
 
-## Preview
-
-<!-- Add a screenshot of the live site here -->
-<!-- ![QyverixAI Preview](assets/preview.png) -->
-
+## Preview 
+![QyverixAI Preview](assets/preview.png)
 ---
 
 ## Features
