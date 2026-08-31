@@ -9,7 +9,6 @@ from ..config import settings
 
 logger = logging.getLogger("ai_assistant.api")
 
-
 class AppCache:
     def __init__(self):
         self._memory_store: OrderedDict[str, tuple[float, dict]] = OrderedDict()
@@ -20,7 +19,6 @@ class AppCache:
         if settings.redis_url:
             try:
                 import redis
-
                 self._redis_client = redis.Redis.from_url(settings.redis_url)
                 self._backend = "redis"
             except Exception as exc:
@@ -34,11 +32,17 @@ class AppCache:
         digest = hashlib.sha256(code.encode("utf-8")).hexdigest()
         return f"ai-assistant:v2:{namespace}:{digest}"
 
-    def get(self, namespace: str, code: str) -> dict | None:
+    
+    def _get_valid_key(self, namespace: str, code: str):
         if not settings.cache_enabled:
             return None
+        return self._make_key(namespace, code) # Fixed typo (added underscore)
 
-        key = self._make_key(namespace, code)
+    def get(self, namespace: str, code: str):
+        key = self._get_valid_key(namespace, code)
+        if not key:
+            return None
+    
         if self._redis_client is not None:
             try:
                 raw = self._redis_client.get(key)
@@ -62,10 +66,11 @@ class AppCache:
             return payload
 
     def set(self, namespace: str, code: str, payload: dict) -> None:
-        if not settings.cache_enabled:
+
+        key = self._get_valid_key(namespace, code)
+        if not key:
             return
 
-        key = self._make_key(namespace, code)
         if self._redis_client is not None:
             try:
                 self._redis_client.setex(
@@ -86,6 +91,3 @@ class AppCache:
     def clear_memory(self) -> None:
         with self._memory_lock:
             self._memory_store.clear()
-
-
-cache = AppCache()
