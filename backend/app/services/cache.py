@@ -47,9 +47,8 @@ class AppCache:
         if self._redis_client is not None:
             try:
                 raw = self._redis_client.get(cache_key)
-                if not raw:
-                    return None
-                return json.loads(raw)
+                if raw:
+                    return json.loads(raw)
             except Exception as exc:
                 logger.warning("redis_get_failed key=%s detail=%s", cache_key, str(exc))
 
