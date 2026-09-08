@@ -91,3 +91,6 @@ class AppCache:
     def clear_memory(self) -> None:
         with self._memory_lock:
             self._memory_store.clear()
+
+cache = AppCache()
+__all__ = ["AppCache", "cache"]
