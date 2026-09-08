@@ -30,6 +30,9 @@ class AppCache:
     def backend(self) -> str:
         return self._backend
 
+    def _make_key(self, namespace: str, key: str):
+        return self._get_valid_key(namespace, key)
+
     def _get_valid_key(self, namespace: str, key: str):
         if not settings.cache_enabled:
             return None
