@@ -1,9 +1,9 @@
 import hashlib
-import pytest
 import time
 
-from app.services.cache import AppCache
+import pytest
 from app.config import settings
+from app.services.cache import AppCache
 
 
 def test_cache_key_uses_sha256_digest(monkeypatch):
