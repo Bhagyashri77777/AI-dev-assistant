@@ -23,7 +23,7 @@ class AppCache:
 
                 self._redis_client = redis.Redis.from_url(settings.redis_url)
                 self._backend = "redis"
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("redis_init_failed detail=%s", str(exc))
 
     @property
@@ -34,8 +34,14 @@ class AppCache:
         return self._get_valid_key(namespace, key)
     
     def _get_valid_key(self, namespace: str, key: str):
-        if not settings.cache_enabled:
+        try:
+            enabled = bool(getattr(settings, "cache_enabled", True))
+        except Exception:  # noqa: BLE001
+            enabled = True
+
+        if not enabled:
             return None
+            
         digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
         return f"ai-assistant:v2:{namespace}:{digest}"
 
@@ -48,8 +54,10 @@ class AppCache:
             try:
                 raw = self._redis_client.get(cache_key)
                 if raw:
+                    if isinstance(raw, (bytes, bytearray)):
+                        raw = raw.decode("utf-8")
                     return json.loads(raw)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("redis_get_failed key=%s detail=%s", cache_key, str(exc))
 
         with self._memory_lock:
@@ -70,21 +78,29 @@ class AppCache:
         if not cache_key:
             return
 
+        ttl = int(getattr(settings, "cache_ttl_seconds", 0) or 0)
+
         if self._redis_client is not None:
             try:
-                self._redis_client.setex(
-                    cache_key, settings.cache_ttl_seconds, json.dumps(payload)
-                )
+                if ttl > 0:
+                    self._redis_client.setex(cache_key, ttl, json.dumps(payload))
+                else:
+                    self._redis_client.set(cache_key, json.dumps(payload))
                 return
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("redis_set_failed key=%s detail=%s", cache_key, str(exc))
 
-        expires_at = time.time() + settings.cache_ttl_seconds
+        if ttl <= 0:
+            expires_at = float("inf")
+        else:
+            expires_at = time.time() + ttl
+
         with self._memory_lock:
+            self._memory_store.pop(cache_key, None)
             self._memory_store[cache_key] = (expires_at, payload)
             self._memory_store.move_to_end(cache_key)
 
-            while len(self._memory_store) > settings.cache_max_entries:
+            while len(self._memory_store) > getattr(settings, "cache_max_entries", 100):
                 self._memory_store.popitem(last=False)
 
     def clear_memory(self) -> None:
