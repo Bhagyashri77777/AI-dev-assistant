@@ -32,7 +32,7 @@ class AppCache:
 
     def _make_key(self, namespace: str, key: str):
         return self._get_valid_key(namespace, key)
-    
+
     def _get_valid_key(self, namespace: str, key: str):
         try:
             enabled = bool(getattr(settings, "cache_enabled", True))
@@ -41,7 +41,7 @@ class AppCache:
 
         if not enabled:
             return None
-            
+
         digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
         return f"ai-assistant:v2:{namespace}:{digest}"
 
@@ -66,7 +66,7 @@ class AppCache:
                 return None
 
             expires_at, payload = record
-            if expires_at < time.time():
+            if time.time() >= expires_at:
                 self._memory_store.pop(cache_key, None)
                 return None
 
@@ -91,7 +91,7 @@ class AppCache:
                 logger.warning("redis_set_failed key=%s detail=%s", cache_key, str(exc))
 
         if ttl <= 0:
-            expires_at = float("inf")
+            expires_at = 0.0  # Expire immediately!
         else:
             expires_at = time.time() + ttl
 
